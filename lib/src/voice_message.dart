@@ -34,8 +34,8 @@ class VoiceMessage extends StatefulWidget {
     this.mePlayIconColor = AppColors.marOscure,
     this.contactPlayIconColor = Colors.black26,
     this.radius = 12,
-    this.contactPlayIconBgColor = Colors.grey,
-    this.meFgColor = const Color(0xffffffff),
+    this.contactPlayIconBgColor = AppColors.marOscure,
+    this.meFgColor = AppColors.marOscure,
     this.played = false,
     this.onPlay,
   });

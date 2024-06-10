@@ -96,7 +96,9 @@ class _VoiceMessageState extends State<VoiceMessage>
           setState(() {
             duration = _audioDuration!.inMilliseconds;
             _remainingTime = widget.formatDuration!(_audioDuration!);
+            _isPlaying = false;
           });
+          _controller?.reset();
           break;
         default:
           break;
@@ -187,9 +189,9 @@ class _VoiceMessageState extends State<VoiceMessage>
                 width: 50,
                 child: Text(
                   _remainingTime,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
-                    color: AppColors.headerColor,
+                    color: widget.me ? widget.meFgColor : widget.contactFgColor,
                   ),
                 ),
               ),
@@ -283,20 +285,23 @@ class _VoiceMessageState extends State<VoiceMessage>
     } else if (widget.audioSrc != null) {
       await _player.play(UrlSource(widget.audioSrc!));
     } else {
-      throw Exception("Audio source and file are both null");
+      throw Exception("Audio source and file are");
     }
 
-    _controller?.forward();
+    _currentlyPlaying = _player;
+
+    await _player.setPlaybackRate(_playbackSpeed);
+    _controller!.forward();
   }
 
-  Future<void> _stopPlaying() async {
-    if (_currentlyPlaying != null) {
+  _stopPlaying() async {
+    if (_currentlyPlaying != null &&
+        _currentlyPlaying!.state == PlayerState.playing) {
       await _currentlyPlaying!.pause();
-      _currentlyPlaying!.seek(Duration.zero);
+      _controller!.stop();
+      _isPlaying = false;
+      setState(() {});
     }
-    _currentlyPlaying = _player;
-    await _player.pause();
-    _controller?.stop();
   }
 
   void _setDuration() async {
@@ -346,7 +351,6 @@ class _VoiceMessageState extends State<VoiceMessage>
         _remainingTime = widget.formatDuration!(audioDuration);
       });
     }
-    debugPrint("_setAnimationConfiguration $_remainingTime");
     _completeAnimationConfiguration();
   }
 
@@ -368,7 +372,7 @@ class _VoiceMessageState extends State<VoiceMessage>
 
   void _changePlayingStatus() async {
     if (widget.onPlay != null) widget.onPlay!();
-    _isPlaying ? await _stopPlaying() :  _startPlaying();
+    _isPlaying ? _stopPlaying() : _startPlaying();
     setState(() => _isPlaying = !_isPlaying);
   }
 
@@ -381,7 +385,7 @@ class _VoiceMessageState extends State<VoiceMessage>
   }
 
   _onChangeSlider(double d) async {
-    if (_isPlaying)  _changePlayingStatus();
+    if (_isPlaying) _changePlayingStatus();
     duration = d.round();
     _controller?.value = (noiseWidth) * duration / maxDurationForSlider;
     _remainingTime = widget

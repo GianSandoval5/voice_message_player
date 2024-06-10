@@ -75,17 +75,9 @@ VoiceMessage(
 
 ## License
 
-Licensed under the MIT license. See [LICENSE](https://github.com/mehranshoqi/voice_message_player/blob/master/LICENSE "LICENSE").
-
-<!-- ## Donation
-
-[![Donate with Ripple](https://en.cryptobadges.io/badge/big/r3EazHwqTd7ifeCJj5gm3xdRna71vwmhwp)](https://en.cryptobadges.io/donate/r3EazHwqTd7ifeCJj5gm3xdRna71vwmhwp) -->
+Licensed under the MIT license. See [LICENSE](https://github.com/GianSandoval5/voice_message_player/blob/master/LICENSE "LICENSE").
 
 
-## Me
-
-:pushpin:Find me at [Portfolio](https://portfolio-3dl.pages.dev/)
-
-
+Thanks
 
 

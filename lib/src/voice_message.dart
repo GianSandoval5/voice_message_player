@@ -295,20 +295,52 @@ class _VoiceMessageState extends State<VoiceMessage>
         ),
       );
 
-  void _startPlaying() async {
-    // Detener cualquier reproducción en curso antes de iniciar una nueva
-    await _stopPlaying();
+ void _startPlaying() async {
+  // Detener cualquier reproducción en curso antes de iniciar una nueva
+  await _stopPlaying();
 
-    if (widget.audioFile != null) {
-      String path = (await widget.audioFile!).path;
-      debugPrint("> _startPlaying path $path");
-      await _player.play(DeviceFileSource(path));
-    } else if (widget.audioSrc != null) {
-      await _player.play(UrlSource(widget.audioSrc!));
-    }
-    await _player.setPlaybackRate(_playbackSpeed);
-    _controller!.forward();
+  if (widget.audioFile != null) {
+    String path = (await widget.audioFile!).path;
+    debugPrint("> _startPlaying path $path");
+    await _player.play(DeviceFileSource(path));
+  } else if (widget.audioSrc != null) {
+    await _player.play(UrlSource(widget.audioSrc!));
   }
+  await _player.setPlaybackRate(_playbackSpeed);
+  _controller!.forward();
+}
+
+void _changePlayingStatus() async {
+  if (widget.onPlay != null) widget.onPlay!();
+  if (_isPlaying) {
+    await _stopPlaying();
+  } else {
+    _startPlaying();
+  }
+  setState(() => _isPlaying = !_isPlaying);
+}
+
+void _toggleSpeed() {
+  setState(() {
+    if (_playbackSpeed == 1.0) {
+      _playbackSpeed = 1.5;
+    } else if (_playbackSpeed == 1.5) {
+      _playbackSpeed = 2.0;
+    } else {
+      _playbackSpeed = 1.0;
+    }
+    _player.setPlaybackRate(_playbackSpeed);
+    // Ajustar la velocidad de la animación
+    if (_controller!.isAnimating) {
+      // Calcular la nueva duración de la animación en función de la velocidad de reproducción
+      double newAnimationDuration = _audioDuration!.inMilliseconds / _playbackSpeed;
+      // Reiniciar la animación con la nueva duración
+      _controller!.duration = Duration(milliseconds: newAnimationDuration.floor());
+      _controller!.forward(from: 0);
+    }
+  });
+}
+
 
   _stopPlaying() async {
     await _player.pause();
@@ -361,28 +393,7 @@ class _VoiceMessageState extends State<VoiceMessage>
   void _completeAnimationConfiguration() =>
       setState(() => _audioConfigurationDone = true);
 
-  void _toggleSpeed() {
-    setState(() {
-      if (_playbackSpeed == 1.0) {
-        _playbackSpeed = 1.5;
-      } else if (_playbackSpeed == 1.5) {
-        _playbackSpeed = 2.0;
-      } else {
-        _playbackSpeed = 1.0;
-      }
-      _player.setPlaybackRate(_playbackSpeed);
-      if (_isPlaying) {
-        // Si se está reproduciendo, reanudar la reproducción con la nueva velocidad
-        _startPlaying();
-      }
-    });
-  }
 
-  void _changePlayingStatus() async {
-    if (widget.onPlay != null) widget.onPlay!();
-    _isPlaying ? _stopPlaying() : _startPlaying();
-    setState(() => _isPlaying = !_isPlaying);
-  }
 
   @override
   void dispose() {

@@ -35,7 +35,7 @@ class VoiceMessage extends StatefulWidget {
     this.contactPlayIconColor = Colors.black26,
     this.radius = 12,
     this.contactPlayIconBgColor = AppColors.marOscure,
-    this.meFgColor = AppColors.marOscure,
+    this.meFgColor = AppColors.headerColor,
     this.played = false,
     this.onPlay,
   });
@@ -69,7 +69,7 @@ class _VoiceMessageState extends State<VoiceMessage>
     with SingleTickerProviderStateMixin {
   late StreamSubscription stream;
   final AudioPlayer _player = AudioPlayer();
-  final double maxNoiseHeight = 6.w(), noiseWidth = 29.w();
+  final double maxNoiseHeight = 6.w(), noiseWidth = 30.w();
   Duration? _audioDuration;
   double maxDurationForSlider = .0000001;
   bool _isPlaying = false, _audioConfigurationDone = false;
@@ -167,10 +167,7 @@ class _VoiceMessageState extends State<VoiceMessage>
                     width: 10,
                     height: 0,
                     child: CircularProgressIndicator(
-                      strokeWidth: 1,
-                      color:
-                          widget.me ? widget.meFgColor : widget.contactFgColor,
-                    ),
+                        strokeWidth: 1, color: AppColors.marOscure),
                   )
                 : Icon(
                     _isPlaying ? Icons.pause : Icons.play_arrow,
@@ -364,7 +361,6 @@ class _VoiceMessageState extends State<VoiceMessage>
 
   void _completeAnimationConfiguration() =>
       setState(() => _audioConfigurationDone = true);
-
 
   void _toggleSpeed() {
     setState(() {

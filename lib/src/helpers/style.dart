@@ -49,7 +49,7 @@ class S {
   ///
   static pinkShadow({Color? shadow}) => [
         BoxShadow(
-          color: shadow ?? AppColors.pink300,
+          color: shadow ?? AppColors.mar300,
           blurRadius: 56,
           spreadRadius: .4,
           offset: const Offset(0, 13),

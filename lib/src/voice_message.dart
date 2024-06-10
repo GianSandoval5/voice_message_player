@@ -1,4 +1,4 @@
-// ignore_for_file: must_be_immutable, library_prefixes
+// ignore_for_file: no_wildcard_variable_uses, avoid_print, must_be_immutable, library_prefixes, library_private_types_in_public_api
 
 import 'dart:async';
 import 'dart:io';
@@ -61,6 +61,7 @@ class VoiceMessage extends StatefulWidget {
 
 class _VoiceMessageState extends State<VoiceMessage>
     with SingleTickerProviderStateMixin {
+  static AudioPlayer? _currentlyPlaying;
   late StreamSubscription stream;
   final AudioPlayer _player = AudioPlayer();
   final double maxNoiseHeight = 6.w(), noiseWidth = 29.w();
@@ -186,9 +187,9 @@ class _VoiceMessageState extends State<VoiceMessage>
                 width: 50,
                 child: Text(
                   _remainingTime,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 10,
-                    color: widget.me ? widget.meFgColor : widget.contactFgColor,
+                    color: AppColors.headerColor,
                   ),
                 ),
               ),
@@ -199,7 +200,7 @@ class _VoiceMessageState extends State<VoiceMessage>
 
   Widget _noise(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final newTHeme = theme.copyWith(
+    final newTheme = theme.copyWith(
       sliderTheme: SliderThemeData(
         trackShape: CustomTrackShape(),
         thumbShape: SliderComponentShape.noThumb,
@@ -208,7 +209,7 @@ class _VoiceMessageState extends State<VoiceMessage>
     );
 
     return Theme(
-      data: newTHeme,
+      data: newTheme,
       child: SizedBox(
         height: 6.5.w(),
         width: noiseWidth,
@@ -281,12 +282,19 @@ class _VoiceMessageState extends State<VoiceMessage>
       await _player.play(DeviceFileSource(path));
     } else if (widget.audioSrc != null) {
       await _player.play(UrlSource(widget.audioSrc!));
+    } else {
+      throw Exception("Audio source and file are both null");
     }
-    await _player.setPlaybackRate(_playbackSpeed);
-    _controller!.forward();
+
+    _controller?.forward();
   }
 
   Future<void> _stopPlaying() async {
+    if (_currentlyPlaying != null) {
+      await _currentlyPlaying!.pause();
+      _currentlyPlaying!.seek(Duration.zero);
+    }
+    _currentlyPlaying = _player;
     await _player.pause();
     _controller?.stop();
   }
@@ -360,7 +368,7 @@ class _VoiceMessageState extends State<VoiceMessage>
 
   void _changePlayingStatus() async {
     if (widget.onPlay != null) widget.onPlay!();
-    _isPlaying ? await _stopPlaying() : _startPlaying();
+    _isPlaying ? await _stopPlaying() :  _startPlaying();
     setState(() => _isPlaying = !_isPlaying);
   }
 
@@ -373,7 +381,7 @@ class _VoiceMessageState extends State<VoiceMessage>
   }
 
   _onChangeSlider(double d) async {
-    if (_isPlaying) _changePlayingStatus();
+    if (_isPlaying)  _changePlayingStatus();
     duration = d.round();
     _controller?.value = (noiseWidth) * duration / maxDurationForSlider;
     _remainingTime = widget

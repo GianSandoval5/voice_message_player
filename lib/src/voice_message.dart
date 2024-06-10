@@ -297,9 +297,6 @@ class _VoiceMessageState extends State<VoiceMessage>
       );
 
   void _startPlaying() async {
-    // Detener cualquier reproducción en curso antes de iniciar una nueva
-    _changePlayingStatus();
-
     if (widget.audioFile != null) {
       String path = (await widget.audioFile!).path;
       debugPrint("> _startPlaying path $path");
@@ -322,25 +319,11 @@ class _VoiceMessageState extends State<VoiceMessage>
   }
 
   void _toggleSpeed() {
-    setState(() {
-      if (_playbackSpeed == 1.0) {
-        _playbackSpeed = 1.5;
-      } else if (_playbackSpeed == 1.5) {
-        _playbackSpeed = 2.0;
-      } else {
-        _playbackSpeed = 1.0;
-      }
-      _player.setPlaybackRate(_playbackSpeed);
-      // Ajustar la velocidad de la animación
-      if (_controller!.isAnimating) {
-        // Calcular la nueva duración de la animación en función de la velocidad de reproducción
-        double newAnimationDuration =
-            _audioDuration!.inMilliseconds / _playbackSpeed;
-        // aumentar la velocidad de la animación
-        _controller!.duration =
-            Duration(milliseconds: newAnimationDuration.round());
-      }
-    });
+    final bool x2 = _playbackSpeed == 1.0;
+    _controller!.duration = Duration(seconds: x2 ? duration ~/ 2 : duration);
+    if (_controller!.isAnimating) _controller!.forward();
+    _player.setPlaybackRate(x2 ? 2 : 1);
+    setState(() {});
   }
 
   _stopPlaying() async {

@@ -134,7 +134,7 @@ class _VoiceMessageState extends State<VoiceMessage>
           color: widget.me ? widget.meBgColor : widget.contactBgColor,
         ),
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4.w(), vertical: 2.8.w()),
+          padding: EdgeInsets.symmetric(horizontal: 2.w(), vertical: 2.8.w()),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -142,7 +142,6 @@ class _VoiceMessageState extends State<VoiceMessage>
               SizedBox(width: 3.w()),
               _durationWithNoise(context),
               SizedBox(width: 2.2.w()),
-
               /// x2 button will be added here.
               _speed(context),
             ],
@@ -166,7 +165,7 @@ class _VoiceMessageState extends State<VoiceMessage>
                     padding: const EdgeInsets.all(8),
                     width: 10,
                     height: 0,
-                    child: CircularProgressIndicator(
+                    child:const CircularProgressIndicator(
                         strokeWidth: 1, color: AppColors.marOscure),
                   )
                 : Icon(
@@ -283,15 +282,15 @@ class _VoiceMessageState extends State<VoiceMessage>
         onTap: () => _toggleSpeed(),
         child: Container(
           alignment: Alignment.center,
-          padding: EdgeInsets.symmetric(horizontal: 3.w(), vertical: 1.6.w()),
+          padding: EdgeInsets.symmetric(horizontal: 2.w(), vertical: 1.6.w()),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(2.8.w()),
             color: widget.meFgColor.withOpacity(.28),
           ),
-          width: 9.8.w(),
+          width: 10.w(),
           child: Text(
             '${_playbackSpeed}x',
-            style: TextStyle(fontSize: 9.8, color: widget.meFgColor),
+            style: const TextStyle(fontSize: 9.8, color: AppColors.headerColor),
           ),
         ),
       );

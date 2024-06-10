@@ -245,7 +245,7 @@ class _VoiceMessageState extends State<VoiceMessage>
                   min: 0.0,
                   max: maxDurationForSlider,
                   onChangeStart: (__) => _stopPlaying(),
-                  onChanged: (_) => _onChangeSlider(_),
+                  onChanged: _isPlaying ? (_) => _onChangeSlider(_) : null,
                   value: duration + .0,
                 ),
               ),
@@ -275,6 +275,7 @@ class _VoiceMessageState extends State<VoiceMessage>
 
   void _startPlaying() async {
     await _stopPlaying();
+    //detiene la animacion de las ondas
 
     await Future.delayed(const Duration(milliseconds: 100));
 

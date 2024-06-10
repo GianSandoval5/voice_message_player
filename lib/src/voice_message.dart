@@ -35,7 +35,7 @@ class VoiceMessage extends StatefulWidget {
     this.contactPlayIconColor = Colors.black26,
     this.radius = 12,
     this.contactPlayIconBgColor = AppColors.marOscure,
-    this.meFgColor = AppColors.headerColor,
+    this.meFgColor = AppColors.marOscure,
     this.played = false,
     this.onPlay,
   });
@@ -69,7 +69,7 @@ class _VoiceMessageState extends State<VoiceMessage>
     with SingleTickerProviderStateMixin {
   late StreamSubscription stream;
   final AudioPlayer _player = AudioPlayer();
-  final double maxNoiseHeight = 6.w(), noiseWidth = 30.w();
+  final double maxNoiseHeight = 6.w(), noiseWidth = 28.5.w();
   Duration? _audioDuration;
   double maxDurationForSlider = .0000001;
   bool _isPlaying = false, _audioConfigurationDone = false;
@@ -134,7 +134,7 @@ class _VoiceMessageState extends State<VoiceMessage>
           color: widget.me ? widget.meBgColor : widget.contactBgColor,
         ),
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 2.w(), vertical: 2.8.w()),
+          padding: EdgeInsets.symmetric(horizontal: 4.w(), vertical: 2.8.w()),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -166,8 +166,11 @@ class _VoiceMessageState extends State<VoiceMessage>
                     padding: const EdgeInsets.all(8),
                     width: 10,
                     height: 0,
-                    child: const CircularProgressIndicator(
-                        strokeWidth: 1, color: AppColors.marOscure),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1,
+                      color:
+                          widget.me ? widget.meFgColor : widget.contactFgColor,
+                    ),
                   )
                 : Icon(
                     _isPlaying ? Icons.pause : Icons.play_arrow,
@@ -189,8 +192,7 @@ class _VoiceMessageState extends State<VoiceMessage>
             children: [
               /// show played badge
               if (!widget.played)
-                Widgets.circle(context, 1.5.w(),
-                    widget.me ? widget.meFgColor : widget.contactCircleColor),
+                Widgets.circle(context, 1.5.w(), AppColors.headerColor),
 
               /// show duration
               if (widget.showDuration)
@@ -198,11 +200,8 @@ class _VoiceMessageState extends State<VoiceMessage>
                   padding: EdgeInsets.only(left: 1.2.w()),
                   child: Text(
                     widget.formatDuration!(widget.duration!),
-                    style: TextStyle(
-                      fontSize: 10,
-                      color:
-                          widget.me ? widget.meFgColor : widget.contactFgColor,
-                    ),
+                    style: const TextStyle(
+                        fontSize: 10, color: AppColors.headerColor),
                   ),
                 ),
               SizedBox(width: 1.5.w()),
@@ -283,7 +282,7 @@ class _VoiceMessageState extends State<VoiceMessage>
         onTap: () => _toggleSpeed(),
         child: Container(
           alignment: Alignment.center,
-          padding: EdgeInsets.symmetric(horizontal: 2.w(), vertical: 1.6.w()),
+          padding: EdgeInsets.symmetric(horizontal: 3.w(), vertical: 1.6.w()),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(2.8.w()),
             color: widget.meFgColor.withOpacity(.28),
@@ -297,6 +296,9 @@ class _VoiceMessageState extends State<VoiceMessage>
       );
 
   void _startPlaying() async {
+    // Detener cualquier reproducción en curso antes de iniciar una nueva
+    await _stopPlaying();
+
     if (widget.audioFile != null) {
       String path = (await widget.audioFile!).path;
       debugPrint("> _startPlaying path $path");
@@ -306,24 +308,6 @@ class _VoiceMessageState extends State<VoiceMessage>
     }
     await _player.setPlaybackRate(_playbackSpeed);
     _controller!.forward();
-  }
-
-  void _changePlayingStatus() async {
-    if (widget.onPlay != null) widget.onPlay!();
-    if (_isPlaying) {
-      await _stopPlaying();
-    } else {
-      _startPlaying();
-    }
-    setState(() => _isPlaying = !_isPlaying);
-  }
-
-  void _toggleSpeed() {
-    final bool x2 = _playbackSpeed == 1.0;
-    _controller!.duration = Duration(seconds: x2 ? duration ~/ 2 : duration);
-    if (_controller!.isAnimating) _controller!.forward();
-    _player.setPlaybackRate(x2 ? 2 : 1);
-    setState(() {});
   }
 
   _stopPlaying() async {
@@ -376,6 +360,25 @@ class _VoiceMessageState extends State<VoiceMessage>
 
   void _completeAnimationConfiguration() =>
       setState(() => _audioConfigurationDone = true);
+
+  void _toggleSpeed() {
+    setState(() {
+      if (_playbackSpeed == 1.0) {
+        _playbackSpeed = 1.5;
+      } else if (_playbackSpeed == 1.5) {
+        _playbackSpeed = 2.0;
+      } else {
+        _playbackSpeed = 1.0;
+      }
+      _player.setPlaybackRate(_playbackSpeed);
+    });
+  }
+
+  void _changePlayingStatus() async {
+    if (widget.onPlay != null) widget.onPlay!();
+    _isPlaying ? _stopPlaying() : _startPlaying();
+    setState(() => _isPlaying = !_isPlaying);
+  }
 
   @override
   void dispose() {

@@ -69,7 +69,7 @@ class _VoiceMessageState extends State<VoiceMessage>
     with SingleTickerProviderStateMixin {
   late StreamSubscription stream;
   final AudioPlayer _player = AudioPlayer();
-  final double maxNoiseHeight = 6.w(), noiseWidth = 28.5.w();
+  final double maxNoiseHeight = 6.w(), noiseWidth = 29.w();
   Duration? _audioDuration;
   double maxDurationForSlider = .0000001;
   bool _isPlaying = false, _audioConfigurationDone = false;
@@ -300,6 +300,9 @@ class _VoiceMessageState extends State<VoiceMessage>
       );
 
   void _startPlaying() async {
+    // Detener cualquier reproducción en curso antes de iniciar una nueva
+    await _stopPlaying();
+
     if (widget.audioFile != null) {
       String path = (await widget.audioFile!).path;
       debugPrint("> _startPlaying path $path");
@@ -362,6 +365,7 @@ class _VoiceMessageState extends State<VoiceMessage>
   void _completeAnimationConfiguration() =>
       setState(() => _audioConfigurationDone = true);
 
+
   void _toggleSpeed() {
     setState(() {
       if (_playbackSpeed == 1.0) {
@@ -372,6 +376,10 @@ class _VoiceMessageState extends State<VoiceMessage>
         _playbackSpeed = 1.0;
       }
       _player.setPlaybackRate(_playbackSpeed);
+      if (_isPlaying) {
+        // Si se está reproduciendo, reanudar la reproducción con la nueva velocidad
+        _startPlaying();
+      }
     });
   }
 

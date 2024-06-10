@@ -1,21 +1,16 @@
-// ignore_for_file: no_wildcard_variable_uses
+// ignore_for_file: must_be_immutable, library_prefixes
 
 import 'dart:async';
 import 'dart:io';
-
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-// ignore: library_prefixes
 import 'package:just_audio/just_audio.dart' as jsAudio;
 import 'package:voice_message_package/src/contact_noises.dart';
 import 'package:voice_message_package/src/helpers/utils.dart';
-
 import './helpers/widgets.dart';
 import './noises.dart';
 import 'helpers/colors.dart';
 
-/// This is the main widget.
-// ignore: must_be_immutable
 class VoiceMessage extends StatefulWidget {
   VoiceMessage({
     super.key,
@@ -61,7 +56,6 @@ class VoiceMessage extends StatefulWidget {
   String Function(Duration duration)? formatDuration;
 
   @override
-  // ignore: library_private_types_in_public_api
   _VoiceMessageState createState() => _VoiceMessageState();
 }
 
@@ -73,7 +67,7 @@ class _VoiceMessageState extends State<VoiceMessage>
   Duration? _audioDuration;
   double maxDurationForSlider = .0000001;
   bool _isPlaying = false, _audioConfigurationDone = false;
-  int duration = 00;
+  int duration = 0;
   String _remainingTime = '';
   AnimationController? _controller;
   double _playbackSpeed = 1.0;
@@ -133,8 +127,6 @@ class _VoiceMessageState extends State<VoiceMessage>
               SizedBox(width: 3.w()),
               _durationWithNoise(context),
               SizedBox(width: 2.2.w()),
-
-              /// x2 button will be added here.
               _speed(context),
             ],
           ),
@@ -178,11 +170,8 @@ class _VoiceMessageState extends State<VoiceMessage>
           SizedBox(height: .3.w()),
           Row(
             children: [
-              /// show played badge
               if (!widget.played)
                 Widgets.circle(context, 1.5.w(), AppColors.headerColor),
-
-              /// show duration
               if (widget.showDuration)
                 Padding(
                   padding: EdgeInsets.only(left: 1.2.w()),
@@ -208,7 +197,6 @@ class _VoiceMessageState extends State<VoiceMessage>
         ],
       );
 
-  /// Noise widget of audio.
   Widget _noise(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final newTHeme = theme.copyWith(
@@ -219,7 +207,6 @@ class _VoiceMessageState extends State<VoiceMessage>
       ),
     );
 
-    ///
     return Theme(
       data: newTHeme,
       child: SizedBox(
@@ -284,8 +271,9 @@ class _VoiceMessageState extends State<VoiceMessage>
       );
 
   void _startPlaying() async {
-    // Detener cualquier reproducción en curso antes de iniciar una nueva
     await _stopPlaying();
+
+    await Future.delayed(const Duration(milliseconds: 100));
 
     if (widget.audioFile != null) {
       String path = (await widget.audioFile!).path;
@@ -298,42 +286,50 @@ class _VoiceMessageState extends State<VoiceMessage>
     _controller!.forward();
   }
 
-  _stopPlaying() async {
+  Future<void> _stopPlaying() async {
     await _player.pause();
-    _controller!.stop();
+    _controller?.stop();
   }
 
   void _setDuration() async {
-    if (widget.duration != null) {
-      _audioDuration = widget.duration;
-    }
-    if (widget.audioFile != null) {
-      String path = (await widget.audioFile!).path;
-      _audioDuration = await jsAudio.AudioPlayer().setFilePath(path);
-    } else {
-      _audioDuration = await jsAudio.AudioPlayer().setUrl(widget.audioSrc!);
-    }
-    duration = _audioDuration!.inMilliseconds;
-    maxDurationForSlider = duration + .0;
-
-    ///
-    _controller = AnimationController(
-      vsync: this,
-      lowerBound: 0,
-      upperBound: noiseWidth,
-      duration: _audioDuration,
-    );
-
-    ///
-    _controller!.addListener(() {
-      if (_controller!.isCompleted) {
-        _controller!.reset();
-        _isPlaying = false;
-        _playbackSpeed = 1.0;
-        setState(() {});
+    try {
+      if (widget.duration != null) {
+        _audioDuration = widget.duration;
+      } else if (widget.audioFile != null) {
+        String path = (await widget.audioFile!).path;
+        _audioDuration = await jsAudio.AudioPlayer().setFilePath(path);
+      } else if (widget.audioSrc != null) {
+        _audioDuration = await jsAudio.AudioPlayer().setUrl(widget.audioSrc!);
+      } else {
+        throw Exception("Audio source and file are both null");
       }
-    });
-    _setAnimationConfiguration(_audioDuration!);
+
+      if (_audioDuration == null) {
+        throw Exception("Failed to get audio duration");
+      }
+
+      duration = _audioDuration!.inMilliseconds;
+      maxDurationForSlider = duration + .0;
+
+      _controller = AnimationController(
+        vsync: this,
+        lowerBound: 0,
+        upperBound: noiseWidth,
+        duration: _audioDuration,
+      );
+
+      _controller!.addListener(() {
+        if (_controller!.isCompleted) {
+          _controller!.reset();
+          _isPlaying = false;
+          _playbackSpeed = 1.0;
+          setState(() {});
+        }
+      });
+      _setAnimationConfiguration(_audioDuration!);
+    } catch (e) {
+      print("Error in _setDuration: $e");
+    }
   }
 
   void _setAnimationConfiguration(Duration audioDuration) async {
@@ -364,7 +360,7 @@ class _VoiceMessageState extends State<VoiceMessage>
 
   void _changePlayingStatus() async {
     if (widget.onPlay != null) widget.onPlay!();
-    _isPlaying ? _stopPlaying() : _startPlaying();
+    _isPlaying ? await _stopPlaying() : _startPlaying();
     setState(() => _isPlaying = !_isPlaying);
   }
 
@@ -376,7 +372,6 @@ class _VoiceMessageState extends State<VoiceMessage>
     super.dispose();
   }
 
-  ///
   _onChangeSlider(double d) async {
     if (_isPlaying) _changePlayingStatus();
     duration = d.round();
@@ -388,9 +383,7 @@ class _VoiceMessageState extends State<VoiceMessage>
   }
 }
 
-///
 class CustomTrackShape extends RoundedRectSliderTrackShape {
-  ///
   @override
   Rect getPreferredRect({
     required RenderBox parentBox,

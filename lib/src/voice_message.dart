@@ -298,7 +298,7 @@ class _VoiceMessageState extends State<VoiceMessage>
 
   void _startPlaying() async {
     // Detener cualquier reproducción en curso antes de iniciar una nueva
-    if (_isPlaying) await _stopPlaying();
+    _changePlayingStatus();
 
     if (widget.audioFile != null) {
       String path = (await widget.audioFile!).path;
@@ -336,10 +336,9 @@ class _VoiceMessageState extends State<VoiceMessage>
         // Calcular la nueva duración de la animación en función de la velocidad de reproducción
         double newAnimationDuration =
             _audioDuration!.inMilliseconds / _playbackSpeed;
-        // Reiniciar la animación con la nueva duración
+        // aumentar la velocidad de la animación
         _controller!.duration =
-            Duration(milliseconds: newAnimationDuration.floor());
-        _controller!.forward(from: 0);
+            Duration(milliseconds: newAnimationDuration.round());
       }
     });
   }

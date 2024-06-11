@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart' as jsAudio;
 import 'package:voice_message_package/src/contact_noises.dart';
@@ -60,21 +61,10 @@ class VoiceMessage extends StatefulWidget {
 
 class _VoiceMessageState extends State<VoiceMessage>
     with SingleTickerProviderStateMixin {
-  // static AudioPlayer? _currentlyPlaying;
-  // late StreamSubscription stream;
-  // final AudioPlayer _player = AudioPlayer();
+  static AudioPlayer? _currentlyPlaying;
+  late StreamSubscription stream;
+  final AudioPlayer _player = AudioPlayer();
   final double maxNoiseHeight = 6.w(), noiseWidth = 29.w();
-  // Duration? _audioDuration;
-  // double maxDurationForSlider = .0000001;
-  // bool _isPlaying = false, _audioConfigurationDone = false;
-  // int duration = 0;
-  // String _remainingTime = '';
-  // AnimationController? _controller;
-  // double _playbackSpeed = 1.0;
-  static jsAudio.AudioPlayer? _currentlyPlaying;
-  final jsAudio.AudioPlayer _player = jsAudio.AudioPlayer();
-  late StreamSubscription<jsAudio.PlayerState> _playerStateSubscription;
-  late StreamSubscription<Duration> _positionSubscription;
   Duration? _audioDuration;
   double maxDurationForSlider = .0000001;
   bool _isPlaying = false, _audioConfigurationDone = false;
@@ -85,18 +75,24 @@ class _VoiceMessageState extends State<VoiceMessage>
 
   @override
   void initState() {
-    super.initState();
-
     widget.formatDuration ??= (Duration duration) {
       return duration.toString().substring(2, 7);
     };
 
     _setDuration();
-
-    _playerStateSubscription = _player.playerStateStream.listen((state) {
-      switch (state.processingState) {
-        case jsAudio.ProcessingState.completed:
-          _player.seek(Duration.zero);
+    super.initState();
+    stream = _player.onPlayerStateChanged.listen((event) {
+      switch (event) {
+        case PlayerState.stopped:
+          break;
+        case PlayerState.playing:
+          setState(() => _isPlaying = true);
+          break;
+        case PlayerState.paused:
+          setState(() => _isPlaying = false);
+          break;
+        case PlayerState.completed:
+          _player.seek(const Duration(milliseconds: 0));
           setState(() {
             duration = _audioDuration!.inMilliseconds;
             _remainingTime = widget.formatDuration!(_audioDuration!);
@@ -104,19 +100,15 @@ class _VoiceMessageState extends State<VoiceMessage>
           });
           _controller?.reset();
           break;
-        case jsAudio.ProcessingState.ready:
-          setState(() => _isPlaying = _player.playing);
-          break;
         default:
           break;
       }
     });
-
-    _positionSubscription = _player.positionStream.listen((position) {
-      setState(() {
-        _remainingTime = widget.formatDuration!(_audioDuration! - position);
-      });
-    });
+    _player.onPositionChanged.listen(
+      (Duration p) => setState(
+        () => _remainingTime = widget.formatDuration!(_audioDuration! - p),
+      ),
+    );
   }
 
   @override
@@ -283,26 +275,30 @@ class _VoiceMessageState extends State<VoiceMessage>
 
   void _startPlaying() async {
     await _stopPlaying();
+    //detiene la animacion de las ondas
+
     await Future.delayed(const Duration(milliseconds: 100));
 
     if (widget.audioFile != null) {
       String path = (await widget.audioFile!).path;
-      await _player.setFilePath(path);
+      debugPrint("> _startPlaying path $path");
+      await _player.play(DeviceFileSource(path));
     } else if (widget.audioSrc != null) {
-      await _player.setUrl(widget.audioSrc!);
+      await _player.play(UrlSource(widget.audioSrc!));
     } else {
-      throw Exception("Audio source and file are both null");
+      throw Exception("Audio source and file are");
     }
 
     _currentlyPlaying = _player;
-    await _player.setSpeed(_playbackSpeed);
-    _player.play();
+
+    await _player.setPlaybackRate(_playbackSpeed);
     _controller!.forward();
   }
 
-  Future<void> _stopPlaying() async {
-    if (_currentlyPlaying != null && _player.playing) {
-      await _player.pause();
+  _stopPlaying() async {
+    if (_currentlyPlaying != null &&
+        _currentlyPlaying!.state == PlayerState.playing) {
+      await _currentlyPlaying!.pause();
       _controller!.stop();
       _isPlaying = false;
       setState(() {});
@@ -350,12 +346,17 @@ class _VoiceMessageState extends State<VoiceMessage>
     }
   }
 
-  void _setAnimationConfiguration(Duration audioDuration) {
-    setState(() {
-      _remainingTime = widget.formatDuration!(audioDuration);
-      _audioConfigurationDone = true;
-    });
+  void _setAnimationConfiguration(Duration audioDuration) async {
+    if (widget.formatDuration != null) {
+      setState(() {
+        _remainingTime = widget.formatDuration!(audioDuration);
+      });
+    }
+    _completeAnimationConfiguration();
   }
+
+  void _completeAnimationConfiguration() =>
+      setState(() => _audioConfigurationDone = true);
 
   void _toggleSpeed() {
     setState(() {
@@ -366,7 +367,7 @@ class _VoiceMessageState extends State<VoiceMessage>
       } else {
         _playbackSpeed = 1.0;
       }
-      _player.setSpeed(_playbackSpeed);
+      _player.setPlaybackRate(_playbackSpeed);
     });
   }
 
@@ -378,16 +379,15 @@ class _VoiceMessageState extends State<VoiceMessage>
 
   @override
   void dispose() {
-    _playerStateSubscription.cancel();
-    _positionSubscription.cancel();
+    stream.cancel();
     _player.dispose();
     _controller?.dispose();
     super.dispose();
   }
 
-  void _onChangeSlider(double value) async {
+  _onChangeSlider(double d) async {
     if (_isPlaying) _changePlayingStatus();
-    duration = value.round();
+    duration = d.round();
     _controller?.value = (noiseWidth) * duration / maxDurationForSlider;
     _remainingTime = widget
         .formatDuration!(_audioDuration! - Duration(milliseconds: duration));

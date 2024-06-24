@@ -1,7 +1,8 @@
-// ignore_for_file: no_wildcard_variable_uses, avoid_print, must_be_immutable, library_prefixes, library_private_types_in_public_api
+//ignore_for_file: no_wildcard_variable_uses, avoid_print, must_be_immutable, library_prefixes, library_private_types_in_public_api
 
 import 'dart:async';
 import 'dart:io';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart' as jsAudio;
 import 'package:voice_message_package/src/contact_noises.dart';
@@ -413,8 +414,6 @@ import 'helpers/colors.dart';
 //   }
 // }
 
-// //
-
 class VoiceMessage extends StatefulWidget {
   VoiceMessage({
     super.key,
@@ -465,9 +464,9 @@ class VoiceMessage extends StatefulWidget {
 
 class _VoiceMessageState extends State<VoiceMessage>
     with SingleTickerProviderStateMixin {
-  static jsAudio.AudioPlayer? _currentlyPlaying;
-  late StreamSubscription stream;
-  final jsAudio.AudioPlayer _player = jsAudio.AudioPlayer();
+  static AudioPlayer? _currentlyPlaying;
+  late StreamSubscription<PlayerState> stream;
+  final AudioPlayer _player = AudioPlayer();
   final double maxNoiseHeight = 6.w(), noiseWidth = 29.w();
   Duration? _audioDuration;
   double maxDurationForSlider = .0000001;
@@ -485,23 +484,18 @@ class _VoiceMessageState extends State<VoiceMessage>
 
     _setDuration();
     super.initState();
-    stream = _player.playerStateStream.listen((event) {
-      switch (event.processingState) {
-        case jsAudio.ProcessingState.idle:
+    stream = _player.onPlayerStateChanged.listen((event) {
+      switch (event) {
+        case PlayerState.stopped:
           break;
-        case jsAudio.ProcessingState.loading:
+        case PlayerState.playing:
+          setState(() => _isPlaying = true);
           break;
-        case jsAudio.ProcessingState.buffering:
+        case PlayerState.paused:
+          setState(() => _isPlaying = false);
           break;
-        case jsAudio.ProcessingState.ready:
-          if (event.playing) {
-            setState(() => _isPlaying = true);
-          } else {
-            setState(() => _isPlaying = false);
-          }
-          break;
-        case jsAudio.ProcessingState.completed:
-          _player.seek(Duration.zero);
+        case PlayerState.completed:
+          _player.seek(const Duration(milliseconds: 0));
           setState(() {
             duration = _audioDuration!.inMilliseconds;
             _remainingTime = widget.formatDuration!(_audioDuration!);
@@ -509,9 +503,11 @@ class _VoiceMessageState extends State<VoiceMessage>
           });
           _controller?.reset();
           break;
+        default:
+          break;
       }
     });
-    _player.positionStream.listen(
+    _player.onPositionChanged.listen(
       (Duration p) => setState(
         () => _remainingTime = widget.formatDuration!(_audioDuration! - p),
       ),
@@ -680,86 +676,122 @@ class _VoiceMessageState extends State<VoiceMessage>
         ),
       );
 
-  Future<void> _setDuration() async {
-    if (widget.audioSrc != null) {
-      // Using URI for the audio source
-      final jsAudio.AudioPlayer jsPlayer = jsAudio.AudioPlayer();
-      final duration = await jsPlayer.setUrl(widget.audioSrc!);
-      _audioDuration = duration;
-      await jsPlayer.dispose();
-    } else if (widget.audioFile != null) {
-      final file = await widget.audioFile;
-      final jsAudio.AudioPlayer jsPlayer = jsAudio.AudioPlayer();
-      final duration = await jsPlayer.setFilePath(file!.path);
-      _audioDuration = duration;
-      await jsPlayer.dispose();
-    }
+  void _startPlaying() async {
+    await _stopPlaying();
+    await Future.delayed(const Duration(milliseconds: 100));
 
-    setState(() {
-      duration = _audioDuration!.inMilliseconds;
-      _remainingTime = widget.formatDuration!(_audioDuration!);
-      _audioConfigurationDone = true;
-      maxDurationForSlider = _audioDuration!.inMilliseconds + .0;
-    });
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: _audioDuration!,
-    );
-  }
-
-  void _stopPlaying() {
-    _player.stop();
-    setState(() => _isPlaying = false);
-  }
-
-  void _onChangeSlider(double value) async {
-    await _player.seek(Duration(milliseconds: value.floor()));
-    setState(() => duration = value.floor());
-  }
-
-  void _changePlayingStatus() async {
-    if (_currentlyPlaying != null) {
-      var playerState = await _currentlyPlaying!.playerStateStream.first;
-      if (playerState.playing) {
-        await _currentlyPlaying!.pause();
-      }
+    if (widget.audioFile != null) {
+      String path = (await widget.audioFile!).path;
+      await _player.play(DeviceFileSource(path));
+    } else if (widget.audioSrc != null) {
+      await _player.play(UrlSource(widget.audioSrc!));
+    } else {
+      throw Exception("Audio source and file are both null");
     }
 
     _currentlyPlaying = _player;
+    await _player.setPlaybackRate(_playbackSpeed);
+    _controller!.forward();
+  }
 
-    if (_isPlaying) {
-      await _player.pause();
-      setState(() => _isPlaying = false);
-    } else {
-      await _player.play();
-      setState(() {
-        _isPlaying = true;
-        widget.onPlay?.call();
-      });
-      _controller!.forward(from: duration / maxDurationForSlider);
+  Future<void> _stopPlaying() async {
+    if (_currentlyPlaying != null &&
+        _currentlyPlaying!.state == PlayerState.playing) {
+      await _currentlyPlaying!.pause();
+      _controller!.stop();
+      _isPlaying = false;
+      setState(() {});
     }
   }
 
-  void _toggleSpeed() {
-    if (_playbackSpeed == 1.0) {
-      _playbackSpeed = 1.5;
-    } else if (_playbackSpeed == 1.5) {
-      _playbackSpeed = 2.0;
-    } else {
-      _playbackSpeed = 1.0;
-    }
+  void _setDuration() async {
+    try {
+      if (widget.duration != null) {
+        _audioDuration = widget.duration;
+      } else if (widget.audioFile != null) {
+        String path = (await widget.audioFile!).path;
+        _audioDuration = await jsAudio.AudioPlayer().setFilePath(path);
+      } else if (widget.audioSrc != null) {
+        _audioDuration = await jsAudio.AudioPlayer().setUrl(widget.audioSrc!);
+      } else {
+        throw Exception("Audio source and file are both null");
+      }
 
-    _player.setSpeed(_playbackSpeed);
-    setState(() {});
+      if (_audioDuration == null) {
+        throw Exception("Failed to get audio duration");
+      }
+
+      duration = _audioDuration!.inMilliseconds;
+      maxDurationForSlider = duration + .0;
+
+      _controller = AnimationController(
+        vsync: this,
+        lowerBound: 0,
+        upperBound: noiseWidth,
+        duration: _audioDuration,
+      );
+
+      _controller!.addListener(() {
+        if (_controller!.isCompleted) {
+          _controller!.reset();
+          _isPlaying = false;
+          _playbackSpeed = 1.0;
+          setState(() {});
+        }
+      });
+      _setAnimationConfiguration(_audioDuration!);
+    } catch (e) {
+      print("Error in _setDuration: $e");
+    }
+  }
+
+  void _setAnimationConfiguration(Duration audioDuration) async {
+    if (widget.formatDuration != null) {
+      setState(() {
+        _remainingTime = widget.formatDuration!(audioDuration);
+      });
+    }
+    _completeAnimationConfiguration();
+  }
+
+  void _completeAnimationConfiguration() =>
+      setState(() => _audioConfigurationDone = true);
+
+  void _toggleSpeed() {
+    setState(() {
+      if (_playbackSpeed == 1.0) {
+        _playbackSpeed = 1.5;
+      } else if (_playbackSpeed == 1.5) {
+        _playbackSpeed = 2.0;
+      } else {
+        _playbackSpeed = 1.0;
+      }
+      _player.setPlaybackRate(_playbackSpeed);
+    });
+  }
+
+  void _changePlayingStatus() async {
+    if (widget.onPlay != null) widget.onPlay!();
+    _isPlaying ? _stopPlaying() : _startPlaying();
+    setState(() => _isPlaying = !_isPlaying);
   }
 
   @override
   void dispose() {
+    stream.cancel();
     _player.dispose();
     _controller?.dispose();
-    stream.cancel();
     super.dispose();
+  }
+
+  _onChangeSlider(double d) async {
+    if (_isPlaying) _changePlayingStatus();
+    duration = d.round();
+    _controller?.value = (noiseWidth) * duration / maxDurationForSlider;
+    _remainingTime = widget
+        .formatDuration!(_audioDuration! - Duration(milliseconds: duration));
+    await _player.seek(Duration(milliseconds: duration));
+    setState(() {});
   }
 }
 

@@ -692,7 +692,7 @@ class _VoiceMessageState extends State<VoiceMessage>
               }));
       final jsAudio.AudioPlayer jsPlayer = jsAudio.AudioPlayer();
       final duration = await jsPlayer
-          .setAudioSource(jsAudio.AudioSource.uri(Uri.dataFromBytes(bytes)));
+          .setAudioSource(jsAudio.AudioSource.file(bytes as String));
       _audioDuration = duration;
       await jsPlayer.dispose();
     } else if (widget.audioFile != null) {

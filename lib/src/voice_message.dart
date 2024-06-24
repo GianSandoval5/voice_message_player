@@ -416,6 +416,17 @@ import 'helpers/colors.dart';
 
 // //
 // // ignore_for_file: no_wildcard_variable_uses, avoid_print, must_be_immutable, library_prefixes, library_private_types_in_public_api
+// ignore_for_file: no_wildcard_variable_uses, avoid_print, must_be_immutable, library_prefixes, library_private_types_in_public_api
+
+import 'dart:async';
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:just_audio/just_audio.dart' as jsAudio;
+import 'package:voice_message_package/src/contact_noises.dart';
+import 'package:voice_message_package/src/helpers/utils.dart';
+import 'package:voice_message_package/src/helpers/widgets.dart';
+import 'package:voice_message_package/src/noises.dart';
+import 'package:voice_message_package/src/helpers/colors.dart';
 
 class VoiceMessage extends StatefulWidget {
   VoiceMessage({
@@ -467,9 +478,9 @@ class VoiceMessage extends StatefulWidget {
 
 class _VoiceMessageState extends State<VoiceMessage>
     with SingleTickerProviderStateMixin {
-  static AudioPlayer? _currentlyPlaying;
+  static jsAudio.AudioPlayer? _currentlyPlaying;
   late StreamSubscription stream;
-  final AudioPlayer _player = AudioPlayer();
+  final jsAudio.AudioPlayer _player = jsAudio.AudioPlayer();
   final double maxNoiseHeight = 6.w(), noiseWidth = 29.w();
   Duration? _audioDuration;
   double maxDurationForSlider = .0000001;
@@ -487,18 +498,23 @@ class _VoiceMessageState extends State<VoiceMessage>
 
     _setDuration();
     super.initState();
-    stream = _player.onPlayerStateChanged.listen((event) {
-      switch (event) {
-        case PlayerState.stopped:
+    stream = _player.playerStateStream.listen((event) {
+      switch (event.processingState) {
+        case jsAudio.ProcessingState.idle:
           break;
-        case PlayerState.playing:
-          setState(() => _isPlaying = true);
+        case jsAudio.ProcessingState.loading:
           break;
-        case PlayerState.paused:
-          setState(() => _isPlaying = false);
+        case jsAudio.ProcessingState.buffering:
           break;
-        case PlayerState.completed:
-          _player.seek(const Duration(milliseconds: 0));
+        case jsAudio.ProcessingState.ready:
+          if (event.playing) {
+            setState(() => _isPlaying = true);
+          } else {
+            setState(() => _isPlaying = false);
+          }
+          break;
+        case jsAudio.ProcessingState.completed:
+          _player.seek(Duration.zero);
           setState(() {
             duration = _audioDuration!.inMilliseconds;
             _remainingTime = widget.formatDuration!(_audioDuration!);
@@ -506,11 +522,9 @@ class _VoiceMessageState extends State<VoiceMessage>
           });
           _controller?.reset();
           break;
-        default:
-          break;
       }
     });
-    _player.onPositionChanged.listen(
+    _player.positionStream.listen(
       (Duration p) => setState(
         () => _remainingTime = widget.formatDuration!(_audioDuration! - p),
       ),
@@ -681,18 +695,9 @@ class _VoiceMessageState extends State<VoiceMessage>
 
   Future<void> _setDuration() async {
     if (widget.audioSrc != null) {
-      final bytes = await HttpClient()
-          .getUrl(Uri.parse(widget.audioSrc!))
-          .then((r) => r.close().then((response) {
-                return response.fold<List<int>>(<int>[],
-                    (List<int> previous, List<int> element) {
-                  previous.addAll(element);
-                  return previous;
-                });
-              }));
+      // Using URI for the audio source
       final jsAudio.AudioPlayer jsPlayer = jsAudio.AudioPlayer();
-      final duration = await jsPlayer
-          .setAudioSource(jsAudio.AudioSource.file(bytes as String));
+      final duration = await jsPlayer.setUrl(widget.audioSrc!);
       _audioDuration = duration;
       await jsPlayer.dispose();
     } else if (widget.audioFile != null) {
@@ -727,9 +732,11 @@ class _VoiceMessageState extends State<VoiceMessage>
   }
 
   void _changePlayingStatus() async {
-    if (_currentlyPlaying != null &&
-        _currentlyPlaying!.state == PlayerState.playing) {
-      await _currentlyPlaying!.pause();
+    if (_currentlyPlaying != null) {
+      var playerState = await _currentlyPlaying!.playerStateStream.first;
+      if (playerState.playing) {
+        await _currentlyPlaying!.pause();
+      }
     }
 
     _currentlyPlaying = _player;
@@ -738,7 +745,7 @@ class _VoiceMessageState extends State<VoiceMessage>
       await _player.pause();
       setState(() => _isPlaying = false);
     } else {
-      await _player.play(widget.audioSrc! as Source);
+      await _player.play();
       setState(() {
         _isPlaying = true;
         widget.onPlay?.call();
@@ -756,7 +763,7 @@ class _VoiceMessageState extends State<VoiceMessage>
       _playbackSpeed = 1.0;
     }
 
-    _player.setPlaybackRate(_playbackSpeed);
+    _player.setSpeed(_playbackSpeed);
     setState(() {});
   }
 

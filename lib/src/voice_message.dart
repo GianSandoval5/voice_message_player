@@ -2,7 +2,6 @@
 
 import 'dart:async';
 import 'dart:io';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart' as jsAudio;
 import 'package:voice_message_package/src/contact_noises.dart';
@@ -415,18 +414,6 @@ import 'helpers/colors.dart';
 // }
 
 // //
-// // ignore_for_file: no_wildcard_variable_uses, avoid_print, must_be_immutable, library_prefixes, library_private_types_in_public_api
-// ignore_for_file: no_wildcard_variable_uses, avoid_print, must_be_immutable, library_prefixes, library_private_types_in_public_api
-
-import 'dart:async';
-import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:just_audio/just_audio.dart' as jsAudio;
-import 'package:voice_message_package/src/contact_noises.dart';
-import 'package:voice_message_package/src/helpers/utils.dart';
-import 'package:voice_message_package/src/helpers/widgets.dart';
-import 'package:voice_message_package/src/noises.dart';
-import 'package:voice_message_package/src/helpers/colors.dart';
 
 class VoiceMessage extends StatefulWidget {
   VoiceMessage({
